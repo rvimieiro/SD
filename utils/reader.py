@@ -32,6 +32,7 @@ SOFTWARE.
 '''
 
 from utils.feature import Feature
+import numpy as np
 
 class __dict(dict):
     def __missing__(self,key):
@@ -66,16 +67,29 @@ def construct_features(df, target='last', value=None):
     
     pos = df[target]==value    
         
-    features = []
+    features = set()
         
-    features.append([Feature(col,value,'eq') for col in 
+    features.update([Feature(col,value,'eq') for col in 
                      df[pos].select_dtypes(include=['object','category']).columns.values 
-                     for value in df[pos].unique()])
+                     for value in df.loc[pos,col].unique()])
     
-    features.append([Feature(col,value,'ne') for col in 
+    features.update([Feature(col,value,'ne') for col in 
                      df[~pos].select_dtypes(include=['object','category']).columns.values 
-                     for value in df[~pos].unique()])
+                     for value in df.loc[~pos,col].unique()])
     
+    def chooseOP(e):
+        if e: return 'le'
+        return 'gt'
+    chooseOP = np.vectorize(chooseOP)
+    
+    for col in df.select_dtypes(include='floating').columns.values:
+        tmp = df.sort_values(by=col)
+        pos = tmp[target]==value
+        indices = np.where(pos != np.roll(pos,1))[0]
+        if indices[0]==0: indices = indices[1:]                
+        features.update([Feature(col,value,op) for value,op in zip((tmp[col].values[indices] + tmp[col].values[indices+1])/2,
+                                                                   chooseOP(pos[indices]))])
+
         
        
     

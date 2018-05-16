@@ -59,3 +59,10 @@ class Feature:
     
     def __repr__(self):
         return self.__str__()
+    
+    def __eq__(self,other):
+        if not isinstance(other, type(self)): return False
+        return self.__col==other.__col and self.__value==other.__value and self.__sym == other.__sym
+    
+    def __hash__(self):
+        return hash((self.__col,self.__value,self.__sym))
