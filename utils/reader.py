@@ -66,15 +66,18 @@ def construct_features(df, target='last', value=None):
     if value is None: value = df[target].unique()[0]
     
     pos = df[target]==value    
-        
+    
+    tmp = df.drop(target,axis=1)
+    numeric_cols = tmp.select_dtypes(include=['floating','integer']).columns.values
+    categorical_cols =  tmp.select_dtypes(include=['object','category','integer']).columns.values
+    del tmp
+    
     features = set()
         
-    features.update([Feature(col,value,'eq') for col in 
-                     df[pos].select_dtypes(include=['object','category']).columns.values 
+    features.update([Feature(col,value,'eq') for col in categorical_cols 
                      for value in df.loc[pos,col].unique()])
     
-    features.update([Feature(col,value,'ne') for col in 
-                     df[~pos].select_dtypes(include=['object','category']).columns.values 
+    features.update([Feature(col,value,'ne') for col in categorical_cols
                      for value in df.loc[~pos,col].unique()])
     
     def chooseOP(e):
@@ -82,14 +85,25 @@ def construct_features(df, target='last', value=None):
         return 'gt'
     chooseOP = np.vectorize(chooseOP)
     
-    for col in df.select_dtypes(include='floating').columns.values:
+    for col in numeric_cols:
         tmp = df.sort_values(by=col)
         pos = tmp[target]==value
-        indices = np.where(pos != np.roll(pos,1))[0]
-        if indices[0]==0: indices = indices[1:]                
+        indices = np.where(pos != np.roll(pos,-1))[0]        
+        if indices[0]==0: indices = indices[1:]
+        if indices[-1]==df.shape[0]: indices = indices[:-2]         
         features.update([Feature(col,value,op) for value,op in zip((tmp[col].values[indices] + tmp[col].values[indices+1])/2,
                                                                    chooseOP(pos[indices]))])
 
-        
+    return features    
        
+
+if __name__ == '__main__':
+    import pandas as pd
+    from textwrap import fill
+    df = pd.read_csv("/home/rv2/Downloads/abalone.data",header=None)
+    names = ["sex", "length", "diameter", "height", "whole", "shucked", "viscera", "shell", "rings"]
+    df.columns = names
     
+    ft = construct_features(df, 'rings', 10)
+    print(len(ft))
+    print(fill(str(ft),80))
