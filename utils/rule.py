@@ -13,6 +13,7 @@
 
 from functools import reduce
 import numpy as np
+from feature import Feature
 
 class Rule:
 
@@ -28,6 +29,34 @@ class Rule:
     def __call__(self, data):
         self.__objs = reduce(lambda x,y: np.logical_and(x,y), map(lambda x: x(data),self.__feat))
         return self.__objs
+    
+    def __add__(self, elem):
+        r = Rule(self.feat.copy(),self.target)
+        if isinstance(elem, Feature):
+            r.feat.update([elem])
+        elif isinstance(elem, Rule):
+            assert(self.target==elem.target)
+            r.feat.update(elem.feat)
+        else:
+            raise ValueError("Invalid type of param elem: {}\n Should either be Feature or Rule.".format(type(elem)))
+        
+        return r
+    
+    def __iadd__(self, elem):
+        if isinstance(elem, Feature):
+            self.feat.update([elem])
+        elif isinstance(elem, Rule):
+            assert(self.target==elem.target)
+            self.feat.update(elem.feat)
+        else:
+            raise ValueError("Invalid type of param elem: {}\n Should either be Feature or Rule.".format(type(elem)))
+        return self
+    
+    def __str__(self):
+        return " \u2227 ".join(map(str,self.feat)) + " \u2192 " + str(self.target)
+    
+    def __repr__(self):
+        return str(self)    
 
     def _get_feat(self):
         return self.__feat
@@ -62,3 +91,13 @@ if __name__ == '__main__':
     r.feat = [ft[0],ft[10]]
     r.target = 10
     print(r(df))
+    print(r)
+    
+    r2 = Rule()
+    r2.feat = [ft[1],ft[9],ft[11]]
+    r2.target = 10
+    print(r2)
+    
+    print(r + r2)
+    r+=r2
+    print(r)
